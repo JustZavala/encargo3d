@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encargo3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F6F7FB; --card:#FFFFFF; --ink:#1B1F2A; --muted:#6B7280; --line:#E5E7EB;
+    --brand:#4F46E5; --brand-soft:#EEF2FF; --ok:#047857; --ok-soft:#ECFDF5;
+    --bad:#B91C1C; --bad-soft:#FEF2F2; --warn:#B45309; --warn-soft:#FFFBEB;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px}
+  header{background:var(--card);border-bottom:1px solid var(--line)}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0}
+  .logo{font-weight:700;font-size:20px}.logo span{color:var(--brand)}
+  .tag{color:var(--muted);font-size:13px}
+  nav{display:flex;gap:4px;overflow-x:auto}
+  nav button{border:0;background:none;padding:12px 14px;font:inherit;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+  nav button.on{color:var(--brand);border-bottom-color:var(--brand)}
+  main.wrap{padding:20px 16px 40px}
+  .panel{display:none}.panel.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+  h2{font-size:18px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .full{grid-column:1/-1}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+  .rule{margin-top:16px;border-radius:10px;padding:16px;background:var(--brand-soft);display:flex;flex-wrap:wrap;gap:20px;align-items:center}
+  .rule .n{font-size:26px;font-weight:700}.rule .l{font-size:12px;color:var(--muted)}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
+  .pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.gray{background:#F3F4F6;color:var(--muted)}
+  .btn{margin-top:16px;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:default}
+  .msg{margin-top:12px;font-size:14px}
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .v{font-size:22px;font-weight:700}.kpi .t{font-size:12px;color:var(--muted)}
+  .tbl{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font-size:12px;color:var(--muted);font-weight:600}
+  td select{padding:6px 8px;width:auto}
+  iframe{width:100%;height:900px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .empty{color:var(--muted);text-align:center;padding:30px}
+  .banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:14px;display:none}
+  @media (max-width:700px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.tag{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="logo">Encargo<span>3D</span></div>
+      <div class="tag">Control de encargos de modelado y decisión de producción</div>
+    </div>
+    <nav>
+      <button class="on" data-tab="nuevo">Nuevo encargo</button>
+      <button data-tab="seguimiento">Seguimiento</button>
+      <button data-tab="tablero">Tablero</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner">Falta conectar la base: pega la URL y la llave pública de Supabase al inicio del script de esta página.</div>
+
+  <!-- ============ PANTALLA 1: NUEVO ENCARGO ============ -->
+  <section class="panel on" id="nuevo">
+    <div class="card">
+      <h2>Registrar un encargo</h2>
+      <p class="sub">Antes de encargar, el sistema calcula cuántas ventas necesitas para recuperar lo que pagas.</p>
+      <form id="form">
+        <div class="grid">
+          <div class="full"><label for="titulo">Modelo o accesorio</label><input id="titulo" required placeholder="Ej. Gorro de ranita con ojos grandes"></div>
+          <div><label for="categoria">Categoría</label>
+            <select id="categoria">
+              <option>Sombrero o gorra</option><option>Cabello</option><option>Lentes y cara</option>
+              <option>Espalda</option><option>Cintura</option><option>Hombro y cuello</option><option>Otro</option>
+            </select></div>
+          <div><label for="modelador">Modelador</label><input id="modelador" required placeholder="Nombre del freelancer"></div>
+          <div><label for="pais">País del modelador</label><input id="pais" placeholder="Ej. Perú"></div>
+          <div><label for="tipo_pago">Tipo de pago</label>
+            <select id="tipo_pago"><option>Precio fijo</option><option>Por hora</option></select></div>
+          <div><label for="costo">Costo del encargo (USD)</label><input id="costo" type="number" min="0.01" step="0.01" required placeholder="Ej. 25"></div>
+          <div><label for="ingreso">Ingreso neto por venta (USD)</label><input id="ingreso" type="number" min="0.0001" step="0.0001" required placeholder="Lo que te queda por cada venta"></div>
+          <div><label for="esperadas">Ventas esperadas en 30 días</label><input id="esperadas" type="number" min="0" step="1" required placeholder="Según tus productos parecidos"></div>
+          <div><label for="entrega">Fecha de entrega acordada</label><input id="entrega" type="date"></div>
+        </div>
+
+        <div class="rule">
+          <div><div class="n" id="r-nec">—</div><div class="l">ventas necesarias</div></div>
+          <div><div class="n" id="r-esp">—</div><div class="l">ventas esperadas</div></div>
+          <div><div id="r-dec"><span class="pill gray">Completa costo, ingreso y ventas</span></div><div class="l" style="margin-top:6px">decisión</div></div>
+        </div>
+        <button class="btn" id="guardar" type="submit">Guardar encargo</button>
+        <div class="msg" id="msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ PANTALLA 2: SEGUIMIENTO ============ -->
+  <section class="panel" id="seguimiento">
+    <div class="kpis">
+      <div class="kpi"><div class="v" id="k-abiertos">—</div><div class="t">Encargos abiertos</div></div>
+      <div class="kpi"><div class="v" id="k-atrasados">—</div><div class="t">Atrasados</div></div>
+      <div class="kpi"><div class="v" id="k-encargar">—</div><div class="t">Con decisión "Encargar"</div></div>
+      <div class="kpi"><div class="v" id="k-costo">—</div><div class="t">Costo comprometido (USD)</div></div>
+    </div>
+    <div class="card">
+      <h2>Encargos registrados</h2>
+      <p class="sub">Cambia el estado aquí y queda guardado en la base. Si pasa la fecha de entrega y no está publicado, aparece como atrasado.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>#</th><th>Fecha</th><th>Modelo</th><th>Modelador</th><th>Costo</th><th>Necesarias</th><th>Esperadas</th><th>Decisión</th><th>Entrega</th><th>Estado</th></tr></thead>
+        <tbody id="lista"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ============ PANTALLA 3: TABLERO ============ -->
+  <section class="panel" id="tablero">
+    <div class="card" style="padding:12px">
+      <div id="tablero-box"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ======== CONFIGURACIÓN: pega aquí tus datos ======== */
+const SUPABASE_URL      = 'https://yxanloziomuejsjhmikg.supabase.co';        // Supabase → Project Settings → Data API → Project URL
+const SUPABASE_ANON_KEY = 'sb_publishable_43fjQU8C8VqF-YvkqoxmGQ_hgjK4T6u';      // Supabase → Project Settings → API Keys → anon / publishable
+const DASHBOARD_URL     = 'https://script.google.com/macros/s/AKfycbzzs-apjDVdxtaOs6ATH862ef85OC9x5_k-LKtOSlD3QksOW6RMgcmYSHPnr8yL1dGLXA/exec';    // URL /exec de Apps Script o enlace de la app de AI Studio
+/* ==================================================== */
+
+const configurado = SUPABASE_URL.startsWith('http') && !SUPABASE_ANON_KEY.startsWith('PEGA');
+const db = configurado ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+if (!configurado) document.getElementById('banner').style.display = 'block';
+
+const $ = id => document.getElementById(id);
+const hoy = () => new Date().toISOString().slice(0, 10);
+const ESTADOS = ['Registrado', 'En modelado', 'En revisión', 'Aprobado', 'Publicado', 'Descartado'];
+
+/* Pestañas */
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === b.dataset.tab));
+  if (b.dataset.tab === 'seguimiento') cargarLista();
+}));
+
+/* Regla de negocio: la misma fórmula que la columna generada en la base */
+function regla() {
+  const costo = parseFloat($('costo').value), ingreso = parseFloat($('ingreso').value), esp = parseInt($('esperadas').value);
+  if (!(costo > 0) || !(ingreso > 0) || isNaN(esp)) {
+    $('r-nec').textContent = '—'; $('r-esp').textContent = isNaN(esp) ? '—' : esp;
+    $('r-dec').innerHTML = '<span class="pill gray">Completa costo, ingreso y ventas</span>'; return;
+  }
+  const nec = Math.ceil(costo / ingreso);
+  $('r-nec').textContent = nec.toLocaleString('es-PE');
+  $('r-esp').textContent = esp.toLocaleString('es-PE');
+  $('r-dec').innerHTML = nec <= esp ? '<span class="pill ok">Encargar</span>' : '<span class="pill bad">No encargar</span>';
+}
+['costo', 'ingreso', 'esperadas'].forEach(id => $(id).addEventListener('input', regla));
+
+/* Guardar en Supabase */
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!db) { $('msg').textContent = 'Primero conecta Supabase (mira el aviso de arriba).'; return; }
+  $('guardar').disabled = true; $('msg').textContent = 'Guardando…';
+  const registro = {
+    titulo: $('titulo').value.trim(),
+    categoria: $('categoria').value,
+    modelador: $('modelador').value.trim(),
+    pais: $('pais').value.trim() || null,
+    tipo_pago: $('tipo_pago').value,
+    costo_usd: parseFloat($('costo').value),
+    ingreso_por_venta_usd: parseFloat($('ingreso').value),
+    ventas_esperadas_30d: parseInt($('esperadas').value),
+    fecha_entrega: $('entrega').value || null
+  };
+  const { data, error } = await db.from('encargos').insert(registro)
+    .select('id, ventas_necesarias, decision').single();
+  $('guardar').disabled = false;
+  if (error) { $('msg').innerHTML = '<span style="color:var(--bad)">No se guardó: ' + error.message + '</span>'; return; }
+  $('msg').innerHTML = 'Guardado como encargo <b>#' + data.id + '</b>. La base calculó <b>' +
+    data.ventas_necesarias + '</b> ventas necesarias → <b>' + data.decision + '</b>.';
+  $('form').reset(); regla();
+});
+
+/* Seguimiento */
+function atrasado(r) {
+  return r.fecha_entrega && r.fecha_entrega < hoy() && !['Publicado', 'Descartado'].includes(r.estado);
+}
+async function cargarLista() {
+  if (!db) { $('lista').innerHTML = '<tr><td colspan="10" class="empty">Conecta Supabase para ver los encargos.</td></tr>'; return; }
+  const { data, error } = await db.from('encargos')
+    .select('id, fecha, titulo, modelador, costo_usd, ventas_necesarias, ventas_esperadas_30d, decision, fecha_entrega, estado')
+    .eq('origen', 'Formulario web').order('id', { ascending: false }).limit(100);
+  if (error) { $('lista').innerHTML = '<tr><td colspan="10" class="empty">Error: ' + error.message + '</td></tr>'; return; }
+  const abiertos = data.filter(r => !['Publicado', 'Descartado'].includes(r.estado));
+  $('k-abiertos').textContent = abiertos.length;
+  $('k-atrasados').textContent = data.filter(atrasado).length;
+  $('k-encargar').textContent = data.filter(r => r.decision === 'Encargar').length + ' de ' + data.length;
+  $('k-costo').textContent = abiertos.reduce((s, r) => s + Number(r.costo_usd), 0).toFixed(2);
+  if (!data.length) { $('lista').innerHTML = '<tr><td colspan="10" class="empty">Aún no hay encargos. Registra el primero.</td></tr>'; return; }
+  $('lista').innerHTML = data.map(r => {
+    const dec = r.decision === 'Encargar' ? 'ok' : r.decision ? 'bad' : 'gray';
+    const ent = r.fecha_entrega ? r.fecha_entrega + (atrasado(r) ? ' <span class="pill warn">Atrasado</span>' : '') : '—';
+    const opts = ESTADOS.map(s => '<option' + (s === r.estado ? ' selected' : '') + '>' + s + '</option>').join('');
+    return '<tr><td>' + r.id + '</td><td>' + r.fecha + '</td><td>' + esc(r.titulo) + '</td><td>' + esc(r.modelador || '—') +
+      '</td><td>$' + Number(r.costo_usd).toFixed(2) + '</td><td>' + (r.ventas_necesarias ?? '—') + '</td><td>' +
+      (r.ventas_esperadas_30d ?? '—') + '</td><td><span class="pill ' + dec + '">' + (r.decision || 'Sin dato') +
+      '</span></td><td>' + ent + '</td><td><select data-id="' + r.id + '">' + opts + '</select></td></tr>';
+  }).join('');
+  document.querySelectorAll('#lista select').forEach(s => s.addEventListener('change', async () => {
+    const { error } = await db.from('encargos').update({ estado: s.value }).eq('id', s.dataset.id);
+    if (error) alert('No se pudo cambiar el estado: ' + error.message); else cargarLista();
+  }));
+}
+function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+/* Tablero */
+$('tablero-box').innerHTML = DASHBOARD_URL.startsWith('http')
+  ? '<p style="margin:0 0 10px;font-size:14px"><a href="' + DASHBOARD_URL + '" target="_blank" rel="noopener">Abrir el tablero en una pestaña nueva ↗</a></p>' +
+    '<iframe src="' + DASHBOARD_URL + '" title="Tablero de indicadores"></iframe>'
+  : '<p class="empty">Aquí va el tablero de indicadores. Pega su URL en DASHBOARD_URL al inicio del script.</p>';
+</script>
+</body>
+</html>
